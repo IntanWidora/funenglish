@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Froggy Fishing Vocabulary Adventure</title>
+    <style>
+        /* =========================================
+           VARIABEL & RESET DASAR
+        ========================================= */
+        :root {
+            --sky-color: #87CEEB;
+            --grass-color: #7CFC00;
+            --water-color: #00BFFF;
+            --water-dark: #1E90FF;
+            --bucket-color: #FFD700;
+            --text-color: #333;
+            --panel-bg: rgba(255, 255, 255, 0.9);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Comic Sans MS', 'Chalkboard SE', sans-serif;
+            user-select: none;
+        }
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: var(--sky-color);
+        }
+
+        /* =========================================
+           GLOBAL UI (Tombol BGM & Fullscreen)
+        ========================================= */
+        .global-controls {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            z-index: 1000;
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-control {
+            background: var(--panel-bg);
+            border: 3px solid white;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+            transition: transform 0.2s, background 0.2s;
+        }
+
+        .btn-control:hover {
+            transform: scale(1.1);
+            background: #fff;
+        }
+
+        .btn-control:active {
+            transform: scale(0.95);
+        }
+
+        /* =========================================
+           MODAL GAME OVER
+        ========================================= */
+        #game-over-modal {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+        }
+
+        .modal-content {
+            background: var(--panel-bg);
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            border: 5px solid #FFD700;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+            animation: zoomIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes zoomIn {
+            0% { transform: scale(0); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .modal-title { font-size: clamp(40px, 8vw, 60px); font-weight: 900; color: #FF4500; margin-bottom: 20px; text-shadow: 3px 3px 0px white, -3px -3px 0px white, 3px -3px 0px white, -3px 3px 0px white; }
+        .modal-score { font-size: clamp(30px, 6vw, 48px); color: #32CD32; font-weight: bold; white-space: pre-line; }
+
+        /* =========================================
+           MENU UTAMA
+        ========================================= */
+        #main-menu {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(to bottom, var(--sky-color) 0%, var(--grass-color) 100%);
+            z-index: 100;
+            transition: opacity 0.5s ease, transform 0.7s ease;
+        }
+
+        .title-container {
+            text-align: center;
+            margin-bottom: 40px;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        .main-title {
+            font-size: 4vw;
+            color: white;
+            text-shadow: 3px 3px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
+            margin-bottom: 10px;
+        }
+
+        @media (max-width: 768px) {
+            .main-title { font-size: 8vw; }
+        }
+
+        .menu-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            width: 90%;
+            max-width: 250px;
+        }
+
+        .btn-mode {
+            padding: 8px 15px;
+            font-size: 16px;
+            font-weight: 900;
+            border-radius: 40px;
+            border: 3px solid white;
+            cursor: pointer;
+            box-shadow: 0 4px 0 rgba(0,0,0,0.2);
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 15px;
+            letter-spacing: 1px;
+        }
+
+        .btn-mode .icon {
+            font-size: 18px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 50%;
+            width: 35px;
+            height: 35px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .btn-solo { background-color: #32CD32; color: white; }
+        .btn-duel { background-color: #FF8C00; color: white; }
+        .btn-squad { background-color: #1E90FF; color: white; }
+
+        .btn-mode:hover {
+            transform: translateY(-3px) scale(1.03);
+            box-shadow: 0 7px 0 rgba(0,0,0,0.2);
+        }
+
+        .btn-mode:active {
+            transform: translateY(2px);
+            box-shadow: 0 2px 0 rgba(0,0,0,0.2);
+        }
+
+        /* =========================================
+           AREA PERMAINAN & GRID SYSTEM
+        ========================================= */
+        #game-area {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            display: none;
+            opacity: 0;
+            background: #222; /* Gap color */
+            gap: 4px; /* Border antar player */
+        }
+
+        /* Layout Grid Fleksibel */
+        #game-area.solo-mode {
+            display: grid;
+            grid-template-columns: 1fr;
+            grid-template-rows: 1fr;
+        }
+
+        #game-area.duel-mode {
+            display: grid;
+            grid-template-columns: 1fr 1fr; /* Split vertikal desktop */
+        }
+
+        #game-area.squad-mode {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+        }
+
+        /* Responsif untuk Mobile Portrait */
+        @media (max-width: 768px) and (orientation: portrait) {
+            #game-area.duel-mode {
+                grid-template-columns: 1fr;
+                grid-template-rows: 1fr 1fr; /* Split horizontal mobile */
+            }
+            #game-area.squad-mode {
+                grid-template-columns: 1fr 1fr;
+                grid-template-rows: 1fr 1fr;
+                /* Biarkan 2x2 tetapi elemen di dalamnya akan menyesuaikan */
+            }
+        }
+
+        /* =========================================
+           KOMPONEN PLAYER (Satu Kotak Pemain)
+        ========================================= */
+        .player-board {
+            position: relative;
+            background: linear-gradient(to bottom, var(--sky-color) 40%, var(--grass-color) 40%, var(--grass-color) 45%, var(--water-color) 45%, var(--water-dark) 100%);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            min-width: 0;
+            min-height: 0;
+        }
+
+        /* Player Label & Score */
+        .header-panel {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: var(--panel-bg);
+            padding: 5px 15px;
+            border-radius: 15px;
+            text-align: center;
+            border: 2px solid white;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            z-index: 10;
+        }
+
+        .player-label { font-size: 12px; font-weight: bold; color: #555; }
+        .score-display { font-size: 20px; font-weight: bold; color: #FF4500; transition: transform 0.2s; }
+        .score-glow { text-shadow: 0 0 10px #FFD700; transform: scale(1.3); }
+
+        /* Area Pertanyaan (Langit) */
+        .question-area {
+            flex: 4;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding-top: 30px;
+            min-height: 0;
+        }
+
+        .vehicle-image {
+            font-size: 10vh; /* Menggunakan emoji SVG/Text besar */
+            filter: drop-shadow(2px 4px 6px rgba(0,0,0,0.3));
+            animation: float 4s ease-in-out infinite;
+        }
+
+        .question-text {
+            background: white;
+            padding: 10px 20px;
+            border-radius: 15px;
+            font-size: clamp(14px, 2.5vh, 24px);
+            font-weight: bold;
+            border: 3px solid #FF8C00;
+            margin-top: 10px;
+            text-align: center;
+            max-width: 90%;
+            word-wrap: break-word;
+            line-height: 1.2;
+        }
+
+        /* Area Kolam & Katak */
+        .pond-area {
+            flex: 6;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-end;
+            padding-bottom: 15px;
+            min-height: 0;
+        }
+
+        /* Ember Jawaban */
+        .buckets-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+            gap: 10px;
+            width: 95%;
+            max-width: 400px;
+            z-index: 5;
+        }
+
+        .bucket {
+            background: linear-gradient(to bottom, #FFF8DC, #DAA520);
+            border: 4px solid #8B4513;
+            border-radius: 10px 10px 30px 30px;
+            padding: 10px 5px;
+            text-align: center;
+            font-weight: bold;
+            font-size: clamp(12px, 2vh, 20px);
+            color: #333;
+            cursor: pointer;
+            box-shadow: inset 0 -5px 0 rgba(0,0,0,0.2), 0 5px 10px rgba(0,0,0,0.3);
+            transition: transform 0.2s, top 0.5s;
+            position: relative;
+            top: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            word-break: break-word;
+            line-height: 1.1;
+        }
+
+        .bucket:hover {
+            transform: scale(1.05);
+            border-color: #A0522D;
+        }
+
+        .bucket:active {
+            transform: scale(0.95);
+        }
+
+        .bucket.slide-out {
+            top: 100vh; /* Animasi turun keluar layar */
+        }
+
+        /* =========================================
+           ANIMASI & EFEK UMPAN BALIK
+        ========================================= */
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-15px); }
+        }
+
+        .feedback-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 20;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .feedback-content {
+            font-size: 6vh;
+            text-shadow: 0 0 10px rgba(255,255,255,0.8);
+        }
+
+        /* Animasi Benar */
+        .correct-anim .feedback-overlay { opacity: 1; }
+        .correct-anim .feedback-content {
+            animation: jumpJoy 1s ease-out;
+        }
+        
+        @keyframes jumpJoy {
+            0% { transform: translateY(20px) scale(0.5) rotate(-20deg); opacity: 0; }
+            50% { transform: translateY(-20px) scale(1.2) rotate(10deg); opacity: 1; }
+            100% { transform: translateY(0) scale(1) rotate(0); opacity: 0; }
+        }
+
+        /* Animasi Salah */
+        .wrong-anim .feedback-overlay { opacity: 1; background: transparent; }
+        .wrong-anim .feedback-content {
+            animation: deadFish 1.5s ease-in-out;
+        }
+
+        @keyframes deadFish {
+            0% { transform: translateY(0) scale(0); opacity: 0; }
+            20% { transform: translateY(-30px) scale(1); opacity: 1; }
+            80% { transform: translateY(-30px) scale(1); opacity: 1; }
+            100% { transform: translateY(20px) scale(0); opacity: 0; }
+        }
+
+        /* Dekorasi Lingkungan */
+        .cloud {
+            position: absolute;
+            font-size: 8vh;
+            opacity: 0.8;
+            animation: moveClouds linear infinite;
+            white-space: nowrap;
+            z-index: 1;
+        }
+        @keyframes moveClouds {
+            from { right: -20%; }
+            to { right: 120%; }
+        }
+
+        /* =========================================
+           PENYESUAIAN UKURAN KHUSUS SQUAD MODE
+        ========================================= */
+        #game-area.squad-mode .vehicle-image {
+            font-size: min(10vw, 6vh); 
+        }
+        
+        #game-area.squad-mode .question-text {
+            padding: 5px;
+            font-size: min(3.5vw, 2vh);
+            border-width: 2px;
+            margin-top: 5px;
+        }
+
+        #game-area.squad-mode .header-panel {
+            padding: 2px 8px;
+            top: 5px;
+            left: 5px;
+        }
+
+        #game-area.squad-mode .score-display {
+            font-size: min(4vw, 16px);
+        }
+
+        #game-area.squad-mode .player-label {
+            font-size: min(2.5vw, 10px);
+        }
+
+        #game-area.squad-mode .buckets-grid {
+            gap: 4px; 
+            width: 98%;
+        }
+
+        #game-area.squad-mode .bucket {
+            padding: 4px 2px;
+            font-size: min(2.8vw, 1.8vh);
+            border-width: 2px;
+            border-radius: 5px 5px 15px 15px;
+        }
+
+        #game-area.squad-mode .feedback-content {
+            font-size: min(8vw, 4vh); 
+        }
+    </style>
+</head>
+<body>
+
+    <!-- KONTROL GLOBAL -->
+    <div class="global-controls">
+        <button id="btn-home" class="btn-control" title="Kembali ke Menu Utama" style="display: none;">🏠</button>
+        <button id="btn-bgm" class="btn-control" title="Toggle BGM">🔇</button>
+        <button id="btn-fullscreen" class="btn-control" title="Toggle Fullscreen">⤢</button>
+    </div>
+
+    <!-- MENU UTAMA -->
+    <div id="main-menu">
+        <div class="title-container">
+            <img src="https://i.imgur.com/xXyJB9H.png" alt="Fishing Vocabulary Adventure Title" style="max-width: 90vw; max-height: 40vh; object-fit: contain;">
+        </div>
+        <div class="menu-buttons">
+            <button class="btn-mode btn-solo" onclick="startGame('solo')"><span class="icon">👤</span> <span>SOLO MODE</span></button>
+            <button class="btn-mode btn-duel" onclick="startGame('duel')"><span class="icon">👥</span> <span>DUEL MODE</span></button>
+            <button class="btn-mode btn-squad" onclick="startGame('squad')"><span class="icon">🧑‍🤝‍🧑</span> <span>SQUAD MODE</span></button>
+        </div>
+    </div>
+
+    <!-- AREA PERMAINAN UTAMA -->
+    <div id="game-area">
+        <!-- Papan pemain akan disuntikkan secara dinamis ke sini oleh JavaScript -->
+    </div>
+
+    <!-- MODAL GAME OVER -->
+    <div id="game-over-modal">
+        <div class="modal-content">
+            <div class="modal-title">PERMAINAN SELESAI!</div>
+            <div class="modal-score">TOTAL SKOR: 0</div>
+        </div>
+    </div>
+
+    <!-- TEMPLATE PEMAIN (Disembunyikan) -->
+    <template id="player-template">
+        <div class="player-board">
+            <!-- Awan Dekorasi -->
+            <div class="cloud" style="top: 10%; animation-duration: 25s;">☁️</div>
+            <div class="cloud" style="top: 25%; font-size: 5vh; animation-duration: 35s; animation-delay: 5s;">☁️</div>
+
+            <!-- UI Atas -->
+            <div class="header-panel">
+                <div class="player-label">PLAYER</div>
+                <div class="score-display"><span class="score-val">0</span></div>
+            </div>
+
+            <!-- Area Soal -->
+            <div class="question-area">
+                <div class="vehicle-image">🚗</div>
+                <div class="question-text">What vehicle is this?</div>
+            </div>
+
+            <!-- Area Kolam & Jawaban -->
+            <div class="pond-area">
+                <div class="buckets-grid">
+                    <button class="bucket">Option A</button>
+                    <button class="bucket">Option B</button>
+                    <button class="bucket">Option C</button>
+                    <button class="bucket">Option D</button>
+                </div>
+            </div>
+
+            <!-- Overlay Animasi -->
+            <div class="feedback-overlay">
+                <div class="feedback-content">✨🐠✨</div>
+            </div>
+        </div>
+    </template>
+
+    <script>
+        /* =========================================
+           DATA KOSAKATA (VOCABULARY)
+        ========================================= */
+        const vocabulary = [
+            { word: "Car", emoji: "🚗" },
+            { word: "Bus", emoji: "🚌" },
+            { word: "Bicycle", emoji: "🚲" },
+            { word: "Motorcycle", emoji: "🏍️" },
+            { word: "Train", emoji: "🚆" },
+            { word: "Airplane", emoji: "✈️" },
+            { word: "Helicopter", emoji: "🚁" },
+            { word: "Ship", emoji: "🚢" },
+            { word: "Boat", emoji: "⛵" },
+            { word: "Truck", emoji: "🚚" },
+            { word: "Ambulance", emoji: "🚑" },
+            { word: "Fire Truck", emoji: "🚒" },
+            { word: "Taxi", emoji: "🚕" },
+            { word: "Van", emoji: "🚐" },
+            { word: "Scooter", emoji: "🛴" },
+            { word: "Subway", emoji: "🚇" },
+            { word: "Bulldozer", emoji: "🚜" }, // Tractor/Bulldozer
+            { word: "Police Car", emoji: "🚓" }
+        ];
+
+        /* =========================================
+           SISTEM AUDIO SINTESIS (Tanpa File Eksternal)
+        ========================================= */
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        let audioCtx;
+        let isBgmOn = false;
+        let bgmInterval;
+        let gameOverTimeout;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new AudioContext();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        // Fungsi pembuat nada dasar
+        function playTone(freq, type, duration, vol = 0.1) {
+            if (!isBgmOn || !audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            
+            gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+            
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            
+            osc.start();
+            osc.stop(audioCtx.currentTime + duration);
+        }
+
+        // Sound Effects
+        const sfx = {
+            click: () => playTone(600, 'sine', 0.1, 0.2),
+            correct: () => {
+                playTone(800, 'sine', 0.1, 0.2);
+                setTimeout(() => playTone(1200, 'sine', 0.2, 0.2), 100);
+            },
+            wrong: () => {
+                playTone(300, 'sawtooth', 0.3, 0.2);
+                setTimeout(() => playTone(250, 'sawtooth', 0.4, 0.2), 150);
+            },
+            splash: () => {
+                // Mensimulasikan suara air dengan white noise
+                if(!isBgmOn || !audioCtx) return;
+                const bufferSize = audioCtx.sampleRate * 0.2; // 0.2 detik
+                const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    data[i] = Math.random() * 2 - 1;
+                }
+                const noise = audioCtx.createBufferSource();
+                noise.buffer = buffer;
+                
+                // Filter untuk membuatnya terdengar seperti cipratan
+                const filter = audioCtx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.value = 1000;
+
+                const gain = audioCtx.createGain();
+                gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+
+                noise.connect(filter);
+                filter.connect(gain);
+                gain.connect(audioCtx.destination);
+                noise.start();
+            }
+        };
+
+        // Background Music Sederhana (Melodi looping)
+        function toggleBGM() {
+            initAudio();
+            isBgmOn = !isBgmOn;
+            const btn = document.getElementById('btn-bgm');
+            
+            if (isBgmOn) {
+                btn.innerText = "🔊";
+                btn.style.backgroundColor = "#7CFC00";
+                
+                // Looping nada ceria
+                const notes = [392, 523, 659, 523, 392, 330, 261, 330]; // G4, C5, E5, C5, G4, E4, C4, E4
+                let i = 0;
+                bgmInterval = setInterval(() => {
+                    playTone(notes[i], 'triangle', 0.3, 0.05);
+                    i = (i + 1) % notes.length;
+                }, 400); // tempo
+
+            } else {
+                btn.innerText = "🔇";
+                btn.style.backgroundColor = "";
+                clearInterval(bgmInterval);
+            }
+            sfx.click();
+        }
+
+        /* =========================================
+           MANAJEMEN KELAS PEMAIN (Player)
+        ========================================= */
+        class Player {
+            constructor(containerElement, playerIndex) {
+                this.container = containerElement;
+                this.index = playerIndex;
+                this.score = 0;
+                this.currentCorrectWord = "";
+                this.isAnimating = false;
+                this.isFinished = false;
+
+                // Salin dan acak array vocabulary khusus untuk pemain ini. Batasi 10 soal untuk duel/squad.
+                let maxQuestions = (currentMode === 'solo') ? vocabulary.length : 10;
+                this.vocabPool = [...vocabulary].sort(() => 0.5 - Math.random()).slice(0, maxQuestions);
+
+                // Bind DOM Elements
+                this.scoreEl = this.container.querySelector('.score-val');
+                this.labelEl = this.container.querySelector('.player-label');
+                this.imageEl = this.container.querySelector('.vehicle-image');
+                this.buckets = Array.from(this.container.querySelectorAll('.bucket'));
+                this.feedbackOverlay = this.container.querySelector('.feedback-content');
+                this.bucketsGrid = this.container.querySelector('.buckets-grid');
+
+                // Setup awal
+                this.labelEl.innerText = `PLAYER ${playerIndex}`;
+                this.setupEventListeners();
+                this.loadNextQuestion();
+            }
+
+            // Fungsi mengambil soal acak dan 3 pengecoh
+            generateQuestionData() {
+                const target = this.vocabPool.pop(); // Ambil 1 soal tanpa mengulangnya
+                
+                // Ambil 3 pengecoh secara acak dari semua vocabulary global (kecuali kata target)
+                const wrongOptions = [...vocabulary]
+                    .filter(v => v.word !== target.word)
+                    .sort(() => 0.5 - Math.random())
+                    .slice(0, 3);
+                
+                const options = [...wrongOptions.map(v => v.word), target.word].sort(() => 0.5 - Math.random());
+                
+                return {
+                    targetEmoji: target.emoji,
+                    targetWord: target.word,
+                    options: options
+                };
+            }
+
+            // Memuat pertanyaan baru ke UI
+            loadNextQuestion() {
+                // Periksa apakah pemain sudah kehabisan soal
+                if (this.vocabPool.length === 0) {
+                    this.isFinished = true;
+                    this.imageEl.innerText = "🏁";
+                    this.container.querySelector('.question-text').innerText = "Selesai! Menunggu...";
+                    this.bucketsGrid.style.display = 'none'; // Sembunyikan ember
+                    checkGameEnd();
+                    return;
+                }
+
+                // Reset animasi ember (kembali ke atas)
+                this.buckets.forEach(b => {
+                    b.classList.remove('slide-out');
+                    b.style.pointerEvents = "auto";
+                });
+                this.container.classList.remove('correct-anim', 'wrong-anim');
+
+                const data = this.generateQuestionData();
+                this.currentCorrectWord = data.targetWord;
+                this.imageEl.innerText = data.targetEmoji;
+
+                // Isi teks ember
+                this.buckets.forEach((bucket, idx) => {
+                    bucket.innerText = data.options[idx];
+                });
+
+                this.isAnimating = false;
+            }
+
+            // Memperbarui Skor dengan efek glow
+            updateScore(points) {
+                this.score += points;
+                // Cegah skor negatif jika diinginkan, namun prompt meminta -5
+                // if(this.score < 0) this.score = 0; 
+                
+                this.scoreEl.innerText = this.score;
+                
+                // Efek Animasi Score
+                const scoreDisplay = this.container.querySelector('.score-display');
+                scoreDisplay.classList.add('score-glow');
+                setTimeout(() => scoreDisplay.classList.remove('score-glow'), 300);
+            }
+
+            // Menangani klik ember
+            handleBucketClick(bucket) {
+                if (this.isAnimating) return; // Kunci input saat animasi
+                this.isAnimating = true;
+                
+                sfx.splash();
+
+                const selectedWord = bucket.innerText;
+
+                if (selectedWord === this.currentCorrectWord) {
+                    this.handleCorrectAnswer(bucket);
+                } else {
+                    this.handleWrongAnswer(bucket);
+                }
+            }
+
+            // Logika Jawaban Benar
+            handleCorrectAnswer(bucket) {
+                sfx.correct();
+                this.updateScore(10);
+                
+                // Ubah overlay jadi ikan melompat dengan bintang
+                this.feedbackOverlay.innerText = "✨🐠✨";
+                this.container.classList.add('correct-anim');
+
+                // Hilangkan ember ke bawah (slide out)
+                this.buckets.forEach(b => {
+                    b.style.pointerEvents = "none";
+                    b.classList.add('slide-out');
+                });
+
+                // Langsung ganti ke pertanyaan selanjutnya (jeda sangat singkat untuk melihat efek)
+                setTimeout(() => {
+                    this.loadNextQuestion();
+                }, 500);
+            }
+
+            // Logika Jawaban Salah
+            handleWrongAnswer(bucket) {
+                sfx.wrong();
+                this.updateScore(-5);
+                
+                // Ubah overlay jadi ikan mati (mata X)
+                this.feedbackOverlay.innerText = "❌😵❌";
+                this.container.classList.add('wrong-anim');
+
+                // Langsung ganti ke pertanyaan selanjutnya (jeda sangat singkat untuk melihat efek)
+                setTimeout(() => {
+                    this.loadNextQuestion();
+                }, 500);
+            }
+
+            // Pasang event listener ke ember
+            setupEventListeners() {
+                this.buckets.forEach(bucket => {
+                    // Gunakan click dan touchstart untuk responsif (mobile/desktop)
+                    bucket.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        this.handleBucketClick(bucket);
+                    });
+                });
+            }
+        }
+
+        /* =========================================
+           MANAJER PERMAINAN UTAMA
+        ========================================= */
+        const gameArea = document.getElementById('game-area');
+        const mainMenu = document.getElementById('main-menu');
+        const playerTemplate = document.getElementById('player-template');
+        let players = [];
+        let currentMode = '';
+
+        function startGame(mode) {
+            initAudio(); // Inisialisasi audio setelah interaksi pertama pengguna
+            sfx.click();
+            currentMode = mode;
+
+            // Munculkan tombol home
+            document.getElementById('btn-home').style.display = 'flex';
+
+            // Transisi UI (Animasi Pindah Layar)
+            mainMenu.style.transform = "scale(1.2)";
+            mainMenu.style.opacity = "0";
+            
+            setTimeout(() => {
+                mainMenu.style.display = "none";
+                
+                // Setup Mode
+                gameArea.innerHTML = ""; // Bersihkan area
+                gameArea.className = ""; // Reset class
+                players = []; // Reset array pemain
+                
+                let numPlayers = 1;
+                if (mode === 'duel') numPlayers = 2;
+                if (mode === 'squad') numPlayers = 4;
+
+                gameArea.classList.add(`${mode}-mode`);
+
+                // Injeksi Player Instances
+                for (let i = 1; i <= numPlayers; i++) {
+                    const clone = playerTemplate.content.cloneNode(true);
+                    gameArea.appendChild(clone);
+                    
+                    const playerElement = gameArea.lastElementChild;
+                    // Inisialisasi logika OOP untuk pemain ini
+                    players.push(new Player(playerElement, i));
+                }
+
+                // Tampilkan Game Area (Fade in)
+                gameArea.style.display = "grid";
+                setTimeout(() => {
+                    gameArea.style.opacity = "1";
+                }, 50);
+
+            }, 700); // Menunggu durasi animasi menu utama
+        }
+
+        // Fungsi mengecek apakah semua pemain sudah selesai
+        function checkGameEnd() {
+            if (players.every(p => p.isFinished)) {
+                showGameOver();
+            }
+        }
+
+        // Fungsi menampilkan skor total / pemenang
+        function showGameOver() {
+            const modal = document.getElementById('game-over-modal');
+            const title = modal.querySelector('.modal-title');
+            const scoreDisplay = modal.querySelector('.modal-score');
+
+            // Ganti teks judul menjadi efek FINISH!
+            title.innerText = "FINISH!";
+
+            if (currentMode === 'solo') {
+                scoreDisplay.innerText = `Total Nilai:\n${players[0].score}`;
+            } else {
+                // Cari nilai tertinggi untuk menentukan pemenang
+                const maxScore = Math.max(...players.map(p => p.score));
+                const winners = players.filter(p => p.score === maxScore).map(p => `Player ${p.index}`);
+                
+                if (winners.length > 1) {
+                    scoreDisplay.innerText = `Seri!\n${winners.join(" & ")}\nSkor: ${maxScore}`;
+                } else {
+                    scoreDisplay.innerText = `Pemenang:\n${winners[0]}\nSkor: ${maxScore}`;
+                }
+            }
+
+            modal.style.display = 'flex';
+
+            // Kembali ke menu utama setelah 4 detik
+            gameOverTimeout = setTimeout(() => {
+                returnToMain();
+            }, 4000);
+        }
+
+        // Fungsi kembali ke menu utama secara paksa (Tombol Home) atau otomatis (Game Over)
+        function returnToMain() {
+            if (gameOverTimeout) clearTimeout(gameOverTimeout);
+            
+            sfx.click();
+            const modal = document.getElementById('game-over-modal');
+            modal.style.display = 'none';
+            document.getElementById('btn-home').style.display = 'none';
+
+            gameArea.style.opacity = "0";
+            setTimeout(() => {
+                gameArea.style.display = "none";
+                mainMenu.style.display = "flex";
+                setTimeout(() => {
+                    mainMenu.style.opacity = "1";
+                    mainMenu.style.transform = "scale(1)";
+                }, 50);
+            }, 300);
+        }
+
+        // Event Listener untuk Tombol Home
+        document.getElementById('btn-home').addEventListener('click', returnToMain);
+
+        /* =========================================
+           FULLSCREEN API CONTROLLER
+        ========================================= */
+        function showToast(msg) {
+            let toast = document.getElementById('custom-toast');
+            if (!toast) {
+                toast = document.createElement('div');
+                toast.id = 'custom-toast';
+                toast.style.cssText = 'position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.8); color:white; padding:10px 20px; border-radius:20px; z-index:9999; font-size:14px; text-align:center; transition: opacity 0.5s; pointer-events:none;';
+                document.body.appendChild(toast);
+            }
+            toast.innerText = msg;
+            toast.style.opacity = '1';
+            setTimeout(() => toast.style.opacity = '0', 3000);
+        }
+
+        document.getElementById('btn-fullscreen').addEventListener('click', async () => {
+            sfx.click();
+            const elem = document.documentElement;
+            
+            try {
+                if (!document.fullscreenElement) {
+                    if (elem.requestFullscreen) {
+                        await elem.requestFullscreen();
+                    } else if (elem.webkitRequestFullscreen) { /* Safari */
+                        await elem.webkitRequestFullscreen();
+                    } else if (elem.msRequestFullscreen) { /* IE11 */
+                        await elem.msRequestFullscreen();
+                    }
+                    document.getElementById('btn-fullscreen').innerText = "⤡";
+                } else {
+                    if (document.exitFullscreen) {
+                        await document.exitFullscreen();
+                    } else if (document.webkitExitFullscreen) { /* Safari */
+                        await document.webkitExitFullscreen();
+                    } else if (document.msExitFullscreen) { /* IE11 */
+                        await document.msExitFullscreen();
+                    }
+                    document.getElementById('btn-fullscreen').innerText = "⤢";
+                }
+            } catch (error) {
+                console.warn("Fullscreen API ditolak oleh kebijakan izin (permissions policy).", error);
+                showToast("Mode layar penuh tidak diizinkan di lingkungan ini.");
+                
+                // Toggle ikon sebagai fallback visual meskipun API gagal
+                const btn = document.getElementById('btn-fullscreen');
+                btn.innerText = btn.innerText === "⤢" ? "⤡" : "⤢";
+            }
+        });
+
+        // Event Listener untuk Tombol Audio
+        document.getElementById('btn-bgm').addEventListener('click', toggleBGM);
+
+    </script>
+</body>
+</html>
